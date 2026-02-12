@@ -22,7 +22,7 @@ EMAIL_ENABLED = True  # Change to True to enable email
 SMTP_SERVER = 'smtp.gmail.com'
 SMTP_PORT = 587
 SMTP_USERNAME = 'kurtdecena24@gmail.com'  # Your email
-SMTP_PASSWORD = 'nhin sqto irje kesu'  # Your app password (not regular password)
+SMTP_PASSWORD = ''  # Your app password (not regular password)
 SENDER_EMAIL = 'kurtdecena24@gmail.com'
 SENDER_NAME = 'Helmet GPS Tracker'
 
