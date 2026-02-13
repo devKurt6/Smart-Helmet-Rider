@@ -1197,44 +1197,6 @@ def api_reset_password():
     }), 200
 
 
-@app.route("/api/forgot-password", methods=["POST"])
-def forgot_password():
-    """
-    Handle forgot password requests.
-    Resets the password to a random one and returns it.
-    In production, this should send an email instead.
-    """
-    data = request.json
-    username = data.get('username')
-    
-    if not username:
-        return jsonify({
-            "success": False,
-            "message": "Username is required"
-        }), 400
-    
-    # Check if user exists
-    user = get_user_by_username(username)
-    if not user:
-        return jsonify({
-            "success": False,
-            "message": "User not found"
-        }), 404
-    
-    # Reset password
-    new_password = reset_user_password(username)
-    
-    if new_password:
-        return jsonify({
-            "success": True,
-            "message": "Password has been reset successfully",
-            "new_password": new_password
-        }), 200
-    else:
-        return jsonify({
-            "success": False,
-            "message": "Failed to reset password"
-        }), 500
 
 
 @app.route("/api/gps", methods=["POST"])
