@@ -9,11 +9,17 @@ import os
 from datetime import datetime, timedelta
 from dotenv import load_dotenv
 
+
+
 # Load environment variables from .env file
 load_dotenv()
 
 app = Flask(__name__)
 CORS(app)  # allow all origins
+
+from werkzeug.middleware.proxy_fix import ProxyFix
+app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
+
 app.secret_key = os.environ.get('SECRET_KEY', secrets.token_hex(32))
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=7)
 
@@ -23,7 +29,7 @@ app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=7)
 # This automatically detects the correct URL:
 # - Uses environment variable if set (for production)
 # - Falls back to localhost for local development
-BASE_URL = os.environ.get('BASE_URL', 'http://localhost:5000')
+# BASE_URL = os.environ.get('BASE_URL', 'http://localhost:5000')
 
 # ============================================
 # EMAIL CONFIGURATION (FROM DATABASE)
@@ -1097,8 +1103,8 @@ def api_forgot_password():
     # Create reset link - automatically uses correct URL
     # Development: http://localhost:5000/reset-password/token
     # Production: https://your-app.onrender.com/reset-password/token
-    reset_link = f"{BASE_URL}/reset-password/{reset_token}"
-    
+    # reset_link = f"{BASE_URL}/reset-password/{reset_token}"
+    reset_link = url_for('reset_password_page', token=reset_token, _external=True)
     # Get email configuration from database
     email_config = get_email_config()
     
@@ -1404,3 +1410,4 @@ if __name__ == "__main__":
         print("Default admin user created (username: admin, password: admin123)")
     
     app.run(host="0.0.0.0", port=5000, debug=True)
+
