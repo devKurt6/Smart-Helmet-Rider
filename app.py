@@ -547,87 +547,58 @@ def get_user_by_email(email):
 
 
 # ============================================
-# SETTINGS MANAGEMENT (ENCRYPTED)
+# SETTINGS MANAGEMENT (NO ENCRYPTION - SIMPLE)
 # ============================================
-
-# def encrypt_setting(value):
-#     """
-#     Encrypt a setting value using password hashing.
-#
-#     Args:
-#         value (str): Plain text value to encrypt
-#
-#     Returns:
-#         str: Encrypted value
-#     """
-#     return generate_password_hash(value)
-
-
-def verify_setting(plain_value, encrypted_value):
-    """
-    Verify an encrypted setting value.
-    
-    Args:
-        plain_value (str): Plain text value
-        encrypted_value (str): Encrypted value to verify against
-    
-    Returns:
-        bool: True if values match
-    """
-    return check_password_hash(encrypted_value, plain_value)
-
 
 def save_setting(key, value, is_encrypted=False, user_id=None):
     """
     Save or update a setting in the database.
+    No encryption - saves directly as plain text.
     
     Args:
         key (str): Setting key
-        value (str): Setting value
-        is_encrypted (bool): Whether to encrypt the value
+        value (str): Setting value (plain text)
+        is_encrypted (bool): Ignored - kept for compatibility
         user_id (int): User ID who updated the setting
     
     Returns:
         bool: True if successful
     """
-    # Encrypt if needed
-    final_value = encrypt_setting(value) if is_encrypted else value
-    
     # Check if setting exists
-    existing = get_setting(key, decrypt=False)
+    existing = get_setting(key)
     
-    if existing:
+    if existing is not None:
         # Update existing setting
         query = '''
             UPDATE app_settings 
-            SET setting_value = ?, is_encrypted = ?, updated_at = CURRENT_TIMESTAMP, updated_by = ?
+            SET setting_value = ?, updated_at = CURRENT_TIMESTAMP, updated_by = ?
             WHERE setting_key = ?
         '''
-        execute_query(query, (final_value, is_encrypted, user_id, key), commit=True)
+        execute_query(query, (value, user_id, key), commit=True)
     else:
-        # Insert new setting
+        # Insert new setting (is_encrypted always 0 since we don't encrypt)
         query = '''
             INSERT INTO app_settings (setting_key, setting_value, is_encrypted, updated_by)
-            VALUES (?, ?, ?, ?)
+            VALUES (?, ?, 0, ?)
         '''
-        execute_query(query, (key, final_value, is_encrypted, user_id), commit=True)
+        execute_query(query, (key, value, user_id), commit=True)
     
     return True
 
 
-def get_setting(key, default=None, decrypt=False):
+def get_setting(key, default=None):
     """
     Get a setting from the database.
+    Returns plain text value directly.
     
     Args:
         key (str): Setting key
         default: Default value if not found
-        decrypt (bool): Whether setting is encrypted (NOT USED - encrypted values can't be decrypted)
     
     Returns:
-        str: Setting value or default
+        str: Setting value (plain text) or default
     """
-    query = 'SELECT setting_value, is_encrypted FROM app_settings WHERE setting_key = ?'
+    query = 'SELECT setting_value FROM app_settings WHERE setting_key = ?'
     result = execute_query(query, (key,), fetch_one=True)
     
     if result:
@@ -1154,6 +1125,7 @@ def api_forgot_password():
     }), 200
 
 
+
 @app.route("/api/reset-password", methods=["POST"])
 def api_reset_password():
     """
@@ -1334,12 +1306,12 @@ def get_settings():
     """
     settings = get_all_settings()
     
-    # Format settings for display (hide encrypted values)
+    # Format settings for display (all values shown as plain text)
     formatted_settings = []
     for setting in settings:
         formatted_settings.append({
             'key': setting['setting_key'],
-            'value': '********' if setting['is_encrypted'] else setting['setting_value'],
+            'value': setting['setting_value'],
             'is_encrypted': setting['is_encrypted'],
             'updated_at': setting['updated_at']
         })
