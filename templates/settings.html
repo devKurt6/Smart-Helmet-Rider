@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Settings - Helmet GPS Tracker</title>
+    <style>
+        * {
+          margin: 0;
+          padding: 0;
+          box-sizing: border-box;
+        }
+
+        body {
+          font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          min-height: 100vh;
+          padding: 20px;
+        }
+
+        .container {
+          max-width: 900px;
+          margin: 0 auto;
+        }
+
+        header {
+          text-align: center;
+          margin-bottom: 30px;
+          position: relative;
+        }
+
+        h1 {
+          color: #fff;
+          font-size: 2.5em;
+          font-weight: 700;
+          text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+          margin-bottom: 10px;
+        }
+
+        .header-actions {
+          position: absolute;
+          top: 0;
+          right: 0;
+          display: flex;
+          gap: 10px;
+        }
+
+        .btn-back {
+          background: rgba(255, 255, 255, 0.2);
+          color: white;
+          border: none;
+          padding: 8px 16px;
+          border-radius: 20px;
+          font-weight: 600;
+          cursor: pointer;
+          transition: all 0.3s ease;
+          backdrop-filter: blur(10px);
+          text-decoration: none;
+        }
+
+        .btn-back:hover {
+          background: rgba(255, 255, 255, 0.3);
+          transform: scale(1.05);
+        }
+
+        .settings-card {
+          background: rgba(255, 255, 255, 0.95);
+          border-radius: 20px;
+          padding: 40px;
+          box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+          margin-bottom: 20px;
+        }
+
+        .settings-card h2 {
+          color: #1e293b;
+          font-size: 1.8em;
+          margin-bottom: 10px;
+          padding-bottom: 15px;
+          border-bottom: 3px solid;
+          border-image: linear-gradient(90deg, #667eea, #764ba2) 1;
+        }
+
+        .settings-card p {
+          color: #64748b;
+          margin-bottom: 30px;
+        }
+
+        .form-group {
+          margin-bottom: 25px;
+        }
+
+        .form-group label {
+          display: block;
+          color: #475569;
+          font-weight: 600;
+          font-size: 0.9em;
+          margin-bottom: 8px;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+        }
+
+        .form-group input,
+        .form-group select {
+          width: 100%;
+          padding: 12px 15px;
+          border: 2px solid #e2e8f0;
+          border-radius: 10px;
+          font-size: 1em;
+          transition: all 0.3s ease;
+          font-family: inherit;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus {
+          outline: none;
+          border-color: #667eea;
+          box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
+        }
+
+        .form-group small {
+          display: block;
+          margin-top: 5px;
+          color: #94a3b8;
+          font-size: 0.85em;
+        }
+
+        .form-row {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 20px;
+        }
+
+        .toggle-switch {
+          position: relative;
+          display: inline-block;
+          width: 60px;
+          height: 34px;
+        }
+
+        .toggle-switch input {
+          opacity: 0;
+          width: 0;
+          height: 0;
+        }
+
+        .slider {
+          position: absolute;
+          cursor: pointer;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background-color: #cbd5e1;
+          transition: .4s;
+          border-radius: 34px;
+        }
+
+        .slider:before {
+          position: absolute;
+          content: "";
+          height: 26px;
+          width: 26px;
+          left: 4px;
+          bottom: 4px;
+          background-color: white;
+          transition: .4s;
+          border-radius: 50%;
+        }
+
+        input:checked + .slider {
+          background: linear-gradient(135deg, #667eea, #764ba2);
+        }
+
+        input:checked + .slider:before {
+          transform: translateX(26px);
+        }
+
+        .toggle-group {
+          display: flex;
+          align-items: center;
+          gap: 15px;
+        }
+
+        .toggle-label {
+          color: #475569;
+          font-weight: 600;
+        }
+
+        .btn {
+          padding: 12px 30px;
+          border: none;
+          border-radius: 10px;
+          font-weight: 600;
+          cursor: pointer;
+          transition: all 0.3s ease;
+          font-size: 1em;
+        }
+
+        .btn-primary {
+          background: linear-gradient(135deg, #667eea, #764ba2);
+          color: white;
+          box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn-primary:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary {
+          background: #64748b;
+          color: white;
+        }
+
+        .btn-secondary:hover {
+          background: #475569;
+        }
+
+        .btn-test {
+          background: #10b981;
+          color: white;
+        }
+
+        .btn-test:hover {
+          background: #059669;
+        }
+
+        .button-group {
+          display: flex;
+          gap: 15px;
+          margin-top: 30px;
+        }
+
+        .message {
+          padding: 15px 20px;
+          border-radius: 10px;
+          margin-bottom: 20px;
+          display: none;
+          animation: slideIn 0.3s ease;
+        }
+
+        .message.show {
+          display: block;
+        }
+
+        .message.success {
+          background: #d1fae5;
+          color: #065f46;
+          border-left: 4px solid #10b981;
+        }
+
+        .message.error {
+          background: #fee2e2;
+          color: #dc2626;
+          border-left: 4px solid #ef4444;
+        }
+
+        .message.info {
+          background: #dbeafe;
+          color: #1e40af;
+          border-left: 4px solid #3b82f6;
+        }
+
+        @keyframes slideIn {
+          from {
+            opacity: 0;
+            transform: translateY(-10px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+
+        .help-box {
+          background: #f1f5f9;
+          padding: 20px;
+          border-radius: 10px;
+          margin-top: 20px;
+        }
+
+        .help-box h3 {
+          color: #475569;
+          font-size: 1.1em;
+          margin-bottom: 10px;
+        }
+
+        .help-box ol {
+          margin-left: 20px;
+          color: #64748b;
+        }
+
+        .help-box li {
+          margin: 8px 0;
+        }
+
+        .password-display {
+          position: relative;
+        }
+
+        .toggle-password {
+          position: absolute;
+          right: 15px;
+          top: 50%;
+          transform: translateY(-50%);
+          cursor: pointer;
+          color: #94a3b8;
+          font-size: 1.2em;
+        }
+
+        @media (max-width: 768px) {
+          .form-row {
+            grid-template-columns: 1fr;
+          }
+
+          .button-group {
+            flex-direction: column;
+          }
+
+          .btn {
+            width: 100%;
+          }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="header-actions">
+                <a href="/dashboard" class="btn-back">← Back to Dashboard</a>
+            </div>
+            <h1>⚙️ Settings</h1>
+        </header>
+
+        <div class="settings-card">
+            <h2>📧 Email Configuration</h2>
+            <p>Configure email settings for password reset functionality</p>
+
+            <div id="successMessage" class="message success"></div>
+            <div id="errorMessage" class="message error"></div>
+            <div id="infoMessage" class="message info"></div>
+
+            <form id="settingsForm">
+                <!-- Email Enabled Toggle -->
+                <div class="form-group">
+                    <div class="toggle-group">
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="emailEnabled">
+                            <span class="slider"></span>
+                        </label>
+                        <span class="toggle-label">Enable Email Functionality</span>
+                    </div>
+                    <small>Turn on to send password reset emails</small>
+                </div>
+
+                <!-- SMTP Server -->
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="smtpServer">SMTP Server</label>
+                        <input type="text" id="smtpServer" placeholder="smtp.gmail.com" value="smtp.gmail.com">
+                        <small>Gmail: smtp.gmail.com</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="smtpPort">SMTP Port</label>
+                        <input type="number" id="smtpPort" placeholder="587" value="587">
+                        <small>TLS: 587, SSL: 465</small>
+                    </div>
+                </div>
+
+                <!-- Email Credentials -->
+                <div class="form-group">
+                    <label for="smtpUsername">Email Address (SMTP Username)</label>
+                    <input type="email" id="smtpUsername" placeholder="your-email@gmail.com">
+                    <small>Your Gmail address</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="smtpPassword">App Password (SMTP Password)</label>
+                    <div class="password-display">
+                        <input type="password" id="smtpPassword" placeholder="Enter 16-character app password">
+                        <span class="toggle-password" onclick="togglePassword()">👁️</span>
+                    </div>
+                    <small>⚠️ Use Gmail App Password, not your regular password</small>
+                </div>
+
+                <!-- Sender Info -->
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="senderEmail">Sender Email</label>
+                        <input type="email" id="senderEmail" placeholder="noreply@example.com">
+                        <small>Email shown in "From" field</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="senderName">Sender Name</label>
+                        <input type="text" id="senderName" placeholder="Helmet GPS Tracker" value="Helmet GPS Tracker">
+                        <small>Name shown in "From" field</small>
+                    </div>
+                </div>
+
+                <!-- Buttons -->
+                <div class="button-group">
+                    <button type="submit" class="btn btn-primary">💾 Save Settings</button>
+                    <button type="button" class="btn btn-test" onclick="testEmail()">✉️ Test Email</button>
+                </div>
+            </form>
+
+            <!-- Help Box -->
+            <div class="help-box">
+                <h3>📖 How to Get Gmail App Password:</h3>
+                <ol>
+                    <li>Go to your Google Account: <strong>myaccount.google.com</strong></li>
+                    <li>Click <strong>Security</strong> → Enable <strong>2-Step Verification</strong></li>
+                    <li>Go back to Security → <strong>App passwords</strong></li>
+                    <li>Select App: <strong>Mail</strong>, Device: <strong>Other</strong></li>
+                    <li>Copy the 16-character password</li>
+                    <li>Paste it in the "App Password" field above</li>
+                </ol>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Load current settings on page load
+        window.addEventListener('load', loadSettings);
+
+        async function loadSettings() {
+            try {
+                const response = await fetch('/api/settings');
+                const data = await response.json();
+
+                if (data.success && data.settings) {
+                    data.settings.forEach(setting => {
+                        switch(setting.key) {
+                            case 'email_enabled':
+                                document.getElementById('emailEnabled').checked = setting.value === 'true';
+                                break;
+                            case 'smtp_server':
+                                document.getElementById('smtpServer').value = setting.value;
+                                break;
+                            case 'smtp_port':
+                                document.getElementById('smtpPort').value = setting.value;
+                                break;
+                            case 'smtp_username':
+                                document.getElementById('smtpUsername').value = setting.value;
+                                break;
+                            case 'smtp_password':
+                                // Don't show encrypted password, just indicate it's set
+                                if (setting.value !== '********' && setting.value) {
+                                    document.getElementById('smtpPassword').placeholder = 'Password is set (enter new to change)';
+                                }
+                                break;
+                            case 'sender_email':
+                                document.getElementById('senderEmail').value = setting.value;
+                                break;
+                            case 'sender_name':
+                                document.getElementById('senderName').value = setting.value;
+                                break;
+                        }
+                    });
+                }
+            } catch (error) {
+                console.error('Error loading settings:', error);
+            }
+        }
+
+        // Save settings
+        document.getElementById('settingsForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            hideMessages();
+
+            const settings = {
+                email_enabled: document.getElementById('emailEnabled').checked ? 'true' : 'false',
+                smtp_server: document.getElementById('smtpServer').value,
+                smtp_port: document.getElementById('smtpPort').value,
+                smtp_username: document.getElementById('smtpUsername').value,
+                smtp_password: document.getElementById('smtpPassword').value,
+                sender_email: document.getElementById('senderEmail').value,
+                sender_name: document.getElementById('senderName').value
+            };
+
+            try {
+                const response = await fetch('/api/settings', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(settings)
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    showSuccess(data.message || 'Settings saved successfully!');
+                    // Clear password field after save
+                    document.getElementById('smtpPassword').value = '';
+                    document.getElementById('smtpPassword').placeholder = 'Password is set (enter new to change)';
+                } else {
+                    showError(data.message || 'Failed to save settings');
+                }
+            } catch (error) {
+                console.error('Error saving settings:', error);
+                showError('Connection error. Please try again.');
+            }
+        });
+
+        // Test email configuration
+        async function testEmail() {
+            hideMessages();
+            showInfo('Testing email configuration...');
+
+            try {
+                const response = await fetch('/api/settings/test-email', {
+                    method: 'POST'
+                });
+
+                const data = await response.json();
+
+                hideMessages();
+
+                if (data.success) {
+                    showSuccess(data.message);
+                } else {
+                    showError(data.message);
+                }
+            } catch (error) {
+                hideMessages();
+                showError('Failed to test email: ' + error.message);
+            }
+        }
+
+        // Toggle password visibility
+        function togglePassword() {
+            const passwordField = document.getElementById('smtpPassword');
+            const toggleIcon = document.querySelector('.toggle-password');
+            
+            if (passwordField.type === 'password') {
+                passwordField.type = 'text';
+                toggleIcon.textContent = '🙈';
+            } else {
+                passwordField.type = 'password';
+                toggleIcon.textContent = '👁️';
+            }
+        }
+
+        // Message helpers
+        function showSuccess(message) {
+            const el = document.getElementById('successMessage');
+            el.textContent = message;
+            el.classList.add('show');
+        }
+
+        function showError(message) {
+            const el = document.getElementById('errorMessage');
+            el.textContent = message;
+            el.classList.add('show');
+        }
+
+        function showInfo(message) {
+            const el = document.getElementById('infoMessage');
+            el.textContent = message;
+            el.classList.add('show');
+        }
+
+        function hideMessages() {
+            document.getElementById('successMessage').classList.remove('show');
+            document.getElementById('errorMessage').classList.remove('show');
+            document.getElementById('infoMessage').classList.remove('show');
+        }
+    </script>
+</body>
+</html>
