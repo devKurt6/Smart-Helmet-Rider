@@ -1,714 +1,212 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Helmet GPS Dashboard</title>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-    <style>
-    @import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Space+Mono:wght@400;700&family=Inter:wght@300;400;500;600&display=swap');
-
-    :root {
-      --bg:        #0a0e1a;
-      --bg-card:   #141c30;
-      --bg-surface:#0f1526;
-      --bg-input:  #0d1220;
-      --cyan:      #00d4ff;
-      --cyan-dim:  #00a8cc;
-      --green:     #00ff88;
-      --red:       #ff3b5c;
-      --amber:     #ffb020;
-      --text:      #e8edf5;
-      --text-2:    #7a8aaa;
-      --text-3:    #3d4f6e;
-      --border:    #1e2d47;
-      --border-2:  #2a3d5c;
-      --grad:      linear-gradient(135deg, #00d4ff, #0085ff);
-      --font-d:    'Rajdhani', sans-serif;
-      --font-m:    'Space Mono', monospace;
-      --font-b:    'Inter', sans-serif;
-      --r-sm: 6px; --r-md: 12px; --r-lg: 18px; --r-pill: 999px;
-      --t: all 0.25s cubic-bezier(0.4,0,0.2,1);
-    }
-
-    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
-    html { overflow-x: hidden; }
-
-    body {
-      font-family: var(--font-b);
-      background: var(--bg);
-      color: var(--text);
-      min-height: 100vh;
-      padding: 20px;
-      -webkit-font-smoothing: antialiased;
-      overflow-x: hidden;
-    }
-
-    /* Subtle grid bg */
-    body::before {
-      content: '';
-      position: fixed; inset: 0;
-      background-image:
-        linear-gradient(rgba(0,212,255,0.025) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(0,212,255,0.025) 1px, transparent 1px);
-      background-size: 40px 40px;
-      pointer-events: none;
-      z-index: 0;
-    }
-
-    .container {
-      max-width: 1400px;
-      margin: 0 auto;
-      position: relative;
-      z-index: 1;
-    }
-
-    /* ── Header ── */
-    header {
-      text-align: center;
-      margin-bottom: 30px;
-      position: relative;
-    }
-
-    h1 {
-      color: var(--text);
-      font-family: var(--font-d);
-      font-size: 2.2em;
-      font-weight: 700;
-      letter-spacing: 3px;
-      text-transform: uppercase;
-      margin-bottom: 12px;
-    }
-
-    .header-actions {
-      position: absolute;
-      top: 0; right: 0;
-      display: flex;
-      gap: 8px;
-      align-items: center;
-      flex-wrap: wrap;
-    }
-
-    .user-info {
-      background: var(--bg-card);
-      border: 1px solid var(--border);
-      padding: 7px 14px;
-      border-radius: var(--r-pill);
-      color: var(--text-2);
-      font-size: 0.85em;
-      display: flex;
-      align-items: center;
-      gap: 7px;
-    }
-
-    .btn-logout {
-      background: rgba(255,59,92,0.15);
-      color: #ff8099;
-      border: 1px solid rgba(255,59,92,0.35);
-      padding: 7px 15px;
-      border-radius: var(--r-pill);
-      font-family: var(--font-d);
-      font-size: 0.82em;
-      font-weight: 600;
-      letter-spacing: 0.5px;
-      cursor: pointer;
-      transition: var(--t);
-    }
-    .btn-logout:hover {
-      background: rgba(255,59,92,0.3);
-      border-color: var(--red);
-      color: var(--red);
-    }
-
-    .btn-history {
-      background: rgba(0,212,255,0.1);
-      color: var(--cyan);
-      border: 1px solid rgba(0,212,255,0.3);
-      padding: 7px 15px;
-      border-radius: var(--r-pill);
-      font-family: var(--font-d);
-      font-size: 0.82em;
-      font-weight: 600;
-      letter-spacing: 0.5px;
-      cursor: pointer;
-      text-decoration: none;
-      display: inline-flex;
-      align-items: center;
-      transition: var(--t);
-    }
-    .btn-history:hover {
-      background: rgba(0,212,255,0.2);
-    }
-
-    .status-indicator {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      background: var(--bg-card);
-      border: 1px solid var(--border);
-      padding: 7px 16px;
-      border-radius: var(--r-pill);
-      font-size: 0.85em;
-      color: var(--text-2);
-      font-family: var(--font-d);
-      letter-spacing: 0.5px;
-    }
-
-    .status-dot {
-      width: 8px; height: 8px;
-      border-radius: 50%;
-      background: var(--green);
-      box-shadow: 0 0 6px var(--green);
-      animation: pulse 2s infinite;
-    }
-    .status-dot.disconnected {
-      background: var(--red);
-      box-shadow: 0 0 6px var(--red);
-      animation: none;
-    }
-    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
-
-    /* ── Cards ── */
-    .dashboard {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-      gap: 16px;
-      margin-bottom: 16px;
-    }
-
-    .card {
-      background: var(--bg-card);
-      border: 1px solid var(--border);
-      border-radius: var(--r-md);
-      padding: 22px;
-      box-shadow: 0 4px 24px rgba(0,0,0,0.4);
-      transition: var(--t);
-      position: relative;
-      overflow: hidden;
-    }
-
-    .card::before {
-      content: '';
-      position: absolute;
-      top: 0; left: 0; right: 0;
-      height: 2px;
-      background: var(--grad);
-      opacity: 0;
-      transition: var(--t);
-    }
-
-    .card:hover {
-      transform: translateY(-3px);
-      border-color: var(--border-2);
-      box-shadow: 0 8px 40px rgba(0,0,0,0.6);
-    }
-    .card:hover::before { opacity: 1; }
-
-    .card-icon {
-      font-size: 1.6em;
-      margin-bottom: 10px;
-      display: block;
-      line-height: 1;
-    }
-
-    .card-label {
-      font-family: var(--font-d);
-      font-size: 0.72em;
-      color: var(--text-2);
-      text-transform: uppercase;
-      letter-spacing: 2px;
-      font-weight: 600;
-      margin-bottom: 6px;
-    }
-
-    .card-value {
-      font-family: var(--font-m);
-      font-size: 1.7em;
-      font-weight: 700;
-      color: var(--text);
-      word-break: break-all;
-      line-height: 1.1;
-    }
-
-    .card-value.loading { color: var(--text-3); }
-
-    .card-value.invalid {
-      color: var(--red);
-      animation: shake 0.5s;
-    }
-
-    @keyframes shake {
-      0%,100%{transform:translateX(0)}
-      25%{transform:translateX(-5px)}
-      75%{transform:translateX(5px)}
-    }
-
-    .card-subtitle {
-      font-size: 0.82em;
-      color: var(--text-3);
-      margin-top: 5px;
-      font-family: var(--font-d);
-      letter-spacing: 0.5px;
-    }
-
-    /* ── Map ── */
-    .map-container {
-      background: var(--bg-card);
-      border: 1px solid var(--border);
-      border-radius: var(--r-md);
-      padding: 20px;
-      box-shadow: 0 4px 24px rgba(0,0,0,0.4);
-      margin-top: 16px;
-    }
-
-    .map-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 15px;
-      flex-wrap: wrap;
-      gap: 10px;
-    }
-
-    .map-title {
-      font-family: var(--font-d);
-      font-size: 1.1em;
-      font-weight: 700;
-      letter-spacing: 1.5px;
-      text-transform: uppercase;
-      color: var(--text);
-    }
-
-    .map-controls { display: flex; gap: 8px; flex-wrap: wrap; }
-
-    .btn {
-      padding: 7px 14px;
-      border: 1px solid var(--border);
-      border-radius: var(--r-sm);
-      background: var(--bg-input);
-      color: var(--text-2);
-      font-family: var(--font-d);
-      font-size: 0.78em;
-      letter-spacing: 0.5px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: var(--t);
-      white-space: nowrap;
-    }
-    .btn:hover { border-color: var(--cyan-dim); color: var(--cyan); }
-
-    #map {
-      height: 500px;
-      border-radius: var(--r-sm);
-    }
-
-    /* Leaflet dark theme */
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Helmet GPS Dashboard</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <link rel="stylesheet" href="/static/styles.css">
+  <!-- Leaflet dark tile override -->
+  <style>
     .leaflet-tile-pane { filter: brightness(0.85) saturate(0.7); }
-    .leaflet-container { background: var(--bg) !important; }
+    .leaflet-container { background: #0a0e1a; }
     .leaflet-popup-content-wrapper {
-      background: var(--bg-card) !important;
-      color: var(--text) !important;
-      border: 1px solid var(--border);
+      background: #141c30;
+      color: #e8edf5;
+      border: 1px solid #1e2d47;
       border-radius: 8px;
       box-shadow: 0 4px 20px rgba(0,0,0,0.5);
     }
-    .leaflet-popup-tip { background: var(--bg-card) !important; }
-    .leaflet-popup-close-button { color: var(--text-2) !important; }
-
-    /* ── GPS quality bar ── */
-    .gps-quality { display: flex; align-items: center; gap: 8px; margin-top: 6px; }
-    .quality-bar {
-      width: 100px; height: 5px;
-      background: var(--border);
-      border-radius: 3px;
-      overflow: hidden;
-    }
-    .quality-fill {
-      height: 100%;
-      background: linear-gradient(90deg, var(--red), var(--amber), var(--green));
-      transition: width 0.3s ease;
-    }
-
-    /* ── Loading state ── */
-    .loading {
-      color: var(--text-3);
-      font-style: italic;
-    }
-
-    /* ── Modal ── */
-    .modal {
-      display: none;
-      position: fixed;
-      z-index: 1000;
-      left: 0; top: 0;
-      width: 100%; height: 100%;
-      background: rgba(0,0,0,0.8);
-      backdrop-filter: blur(5px);
-      animation: fadeIn 0.3s ease;
-    }
-    .modal.show { display: flex; align-items: center; justify-content: center; }
-
-    @keyframes fadeIn { from{opacity:0} to{opacity:1} }
-
-    .modal-content {
-      background: var(--bg-card);
-      border: 1px solid var(--border);
-      border-radius: var(--r-lg);
-      width: 90%;
-      max-width: 1200px;
-      max-height: 85vh;
-      overflow: hidden;
-      box-shadow: 0 24px 80px rgba(0,0,0,0.6);
-      animation: slideUp 0.3s ease;
-      display: flex;
-      flex-direction: column;
-    }
-    @keyframes slideUp { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:translateY(0)} }
-
-    .modal-header {
-      background: var(--bg-surface);
-      border-bottom: 1px solid var(--border);
-      padding: 22px 28px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-    .modal-header h2 {
-      font-family: var(--font-d);
-      font-size: 1.5em;
-      font-weight: 700;
-      letter-spacing: 2px;
-      text-transform: uppercase;
-      color: var(--text);
-      margin: 0;
-    }
-
-    .modal-close {
-      background: var(--bg-input);
-      border: 1px solid var(--border);
-      color: var(--text-2);
-      font-size: 1.2em;
-      width: 36px; height: 36px;
-      border-radius: var(--r-sm);
-      cursor: pointer;
-      transition: var(--t);
-      display: flex; align-items: center; justify-content: center;
-    }
-    .modal-close:hover { border-color: var(--red); color: var(--red); }
-
-    .modal-body { padding: 28px; overflow-y: auto; flex: 1; }
-
-    /* ── History controls ── */
-    .history-controls {
-      display: flex; gap: 12px; margin-bottom: 20px;
-      flex-wrap: wrap; align-items: center;
-    }
-    .history-controls select,
-    .history-controls input {
-      padding: 9px 13px;
-      background: var(--bg-input);
-      border: 1px solid var(--border);
-      border-radius: var(--r-sm);
-      color: var(--text);
-      font-size: 0.88em;
-      font-family: var(--font-b);
-      outline: none;
-      transition: var(--t);
-    }
-    .history-controls select:focus,
-    .history-controls input:focus { border-color: var(--cyan-dim); }
-    .history-controls select option { background: var(--bg-card); }
-
-    /* ── History table ── */
-    .history-table-wrapper {
-      overflow-x: auto;
-      border-radius: var(--r-md);
-      border: 1px solid var(--border);
-    }
-    .history-table {
-      width: 100%;
-      border-collapse: collapse;
-      background: var(--bg-surface);
-      font-size: 0.88em;
-    }
-    .history-table th {
-      background: var(--bg-card);
-      color: var(--text-2);
-      padding: 12px 14px;
-      text-align: left;
-      font-family: var(--font-d);
-      font-size: 0.75em;
-      letter-spacing: 1.5px;
-      text-transform: uppercase;
-      font-weight: 600;
-      border-bottom: 1px solid var(--border);
-      position: sticky; top: 0; z-index: 10;
-    }
-    .history-table td {
-      padding: 10px 14px;
-      border-bottom: 1px solid var(--border);
-      color: var(--text);
-      font-family: var(--font-m);
-      font-size: 0.82em;
-    }
-    .history-table tr:hover td { background: rgba(255,255,255,0.02); }
-    .history-table tr:last-child td { border-bottom: none; }
-
-    /* ── Badges ── */
-    .badge {
-      display: inline-block;
-      padding: 3px 9px;
-      border-radius: var(--r-pill);
-      font-size: 0.78em;
-      font-weight: 600;
-      font-family: var(--font-d);
-      letter-spacing: 0.5px;
-      text-transform: uppercase;
-    }
-    .badge-normal  { background: rgba(0,255,136,0.1);  color: #00cc6a; border: 1px solid rgba(0,255,136,0.2); }
-    .badge-warning { background: rgba(255,176,32,0.1); color: var(--amber);  border: 1px solid rgba(255,176,32,0.2); }
-    .badge-danger  { background: rgba(255,59,92,0.1);  color: #ff8099;  border: 1px solid rgba(255,59,92,0.2); }
-
-    .no-data {
-      text-align: center; padding: 40px;
-      color: var(--text-3);
-      font-family: var(--font-d); letter-spacing: 1px;
-    }
-
-    /* ── Stats grid ── */
-    .stats-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-      gap: 12px; margin-bottom: 22px;
-    }
-    .stat-card {
-      background: var(--bg-surface);
-      border: 1px solid var(--border);
-      border-left: 3px solid var(--cyan);
-      padding: 16px;
-      border-radius: var(--r-sm);
-    }
-    .stat-card h3 {
-      font-family: var(--font-d);
-      font-size: 0.72em; letter-spacing: 1.5px; text-transform: uppercase;
-      color: var(--text-2); margin-bottom: 8px;
-    }
-    .stat-card p {
-      font-family: var(--font-m);
-      font-size: 1.5em; font-weight: 700;
-      color: var(--cyan); margin: 0;
-    }
-
-    /* ── Export btn ── */
-    .btn-export {
-      padding: 8px 16px;
-      border: 1px solid var(--border);
-      border-radius: var(--r-sm);
-      background: var(--bg-input);
-      color: var(--text-2);
-      font-family: var(--font-d);
-      font-size: 0.82em; letter-spacing: 0.5px; font-weight: 600;
-      cursor: pointer;
-      transition: var(--t);
-    }
-    .btn-export:hover { border-color: var(--cyan-dim); color: var(--cyan); }
-
-    /* ── Responsive ── */
-    @media (max-width: 768px) {
-      h1 { font-size: 1.5em; letter-spacing: 1.5px; }
-
-      .header-actions {
-        position: static;
-        justify-content: center;
-        margin-bottom: 14px;
-      }
-
-      header { text-align: center; }
-
-      .dashboard { grid-template-columns: repeat(2, 1fr); gap: 12px; }
-
-      #map { height: 320px; }
-
-      .map-header { flex-direction: column; align-items: flex-start; gap: 10px; }
-
-      .modal-body { padding: 16px; }
-
-      .history-controls { flex-direction: column; align-items: stretch; }
-
-      .stats-grid { grid-template-columns: 1fr 1fr; }
-
-      .btn-history .label,
-      .btn-logout .label { display: none; }
-    }
-
-    @media (max-width: 480px) {
-      body { padding: 12px; }
-      .dashboard { grid-template-columns: 1fr; }
-      .stats-grid { grid-template-columns: 1fr; }
-    }
-</style>
+    .leaflet-popup-tip { background: #141c30; }
+    .leaflet-popup-close-button { color: #7a8aaa !important; }
+  </style>
 </head>
-<body>
+<body class="dash-body">
+
 <div class="container">
-    <header>
-        <div class="header-actions">
-            <div class="user-info">
-                <span>👤</span>
-                <span id="currentUser">User</span>
-            </div>
-            <button class="btn-history" onclick="showHistoryModal()">📊 GPS History</button>
-            <button class="btn-logout" onclick="handleLogout()">🚪 Logout</button>
-            <a href="/settings" class="btn-history">⚙️ Settings</a>
-        </div>
-        <h1>🏍️ Helmet GPS Tracker</h1>
-        <div class="status-indicator">
-            <div class="status-dot" id="statusDot"></div>
-            <span id="statusText">Connected</span>
-        </div>
-    </header>
 
-    <div class="dashboard">
-        <div class="card">
-            <div class="card-icon">📍</div>
-            <div class="card-label">Latitude</div>
-            <div id="lat" class="card-value loading">--</div>
-        </div>
+  <!-- ── Header ───────────────────────────── -->
+  <header class="dash-header">
+    <div class="dash-brand">
+      <span class="dash-brand-icon">🏍️</span>
+      <h1>Helmet <span>GPS</span> Tracker</h1>
+    </div>
 
-        <div class="card">
-            <div class="card-icon">📍</div>
-            <div class="card-label">Longitude</div>
-            <div id="lng" class="card-value loading">--</div>
-        </div>
+    <div class="dash-header-right">
+      <div class="status-badge">
+        <div class="status-dot" id="statusDot"></div>
+        <span id="statusText">Connected</span>
+      </div>
 
-        <div class="card">
-            <div class="card-icon">🚀</div>
-            <div class="card-label">Speed</div>
-            <div id="speed" class="card-value loading">--</div>
-            <div class="card-subtitle">km/h</div>
-        </div>
+      <div class="user-pill">
+        <span>👤</span>
+        <span id="currentUser">User</span>
+      </div>
 
-        <div class="card">
-            <div class="card-icon">🛰️</div>
-            <div class="card-label">Satellites</div>
-            <div id="sat" class="card-value loading">--</div>
-            <div class="gps-quality">
-                <div class="quality-bar">
-                    <div class="quality-fill" id="satQuality" style="width: 0%"></div>
-                </div>
-                <span id="satQualityText" class="card-subtitle">Poor</span>
-            </div>
-        </div>
+      <button class="btn-header btn-accent" onclick="showHistoryModal()">
+        📊 <span class="label">GPS History</span>
+      </button>
 
-        <div class="card">
-            <div class="card-icon">🏔️</div>
-            <div class="card-label">Altitude</div>
-            <div id="alt" class="card-value loading">--</div>
-            <div class="card-subtitle">meters</div>
-        </div>
+      <a href="/settings" class="btn-header">
+        ⚙️ <span class="label">Settings</span>
+      </a>
 
-        <div class="card">
-            <div class="card-icon">📅</div>
-            <div class="card-label">Date & Time</div>
-            <div id="date" class="card-value loading">--/--/----</div>
-            <div id="time" class="card-subtitle">--:--:--</div>
-        </div>
+      <button class="btn-header btn-danger" onclick="handleLogout()">
+        🚪 <span class="label">Logout</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- ── Sensor Cards ──────────────────────── -->
+  <div class="cards-grid">
+    <div class="card">
+      <span class="card-icon">📍</span>
+      <div class="card-label">Latitude</div>
+      <div id="lat" class="card-value loading">--</div>
     </div>
 
     <div class="card">
-        <div class="card-icon">🍺</div>
-        <div class="card-label">Alcohol Level</div>
-        <div id="alcoholRaw" class="card-value loading">--</div>
-        <div class="card-subtitle">raw value</div>
+      <span class="card-icon">📍</span>
+      <div class="card-label">Longitude</div>
+      <div id="lng" class="card-value loading">--</div>
     </div>
 
     <div class="card">
-        <div class="card-icon">🚨</div>
-        <div class="card-label">Alcohol Status</div>
-        <div id="alcoholStatus" class="card-value loading">--</div>
+      <span class="card-icon">🚀</span>
+      <div class="card-label">Speed</div>
+      <div id="speed" class="card-value loading">--</div>
+      <div class="card-subtitle">km/h</div>
     </div>
 
-
-    <div class="map-container">
-        <div class="map-header">
-            <div class="map-title">📌 Real-time Location</div>
-            <div class="map-controls">
-                <button class="btn" onclick="centerMap()">Center Map</button>
-                <button class="btn" onclick="toggleAutoCenter()">Auto-Center: <span id="autoCenterStatus">ON</span>
-                </button>
-                <button class="btn" onclick="manualRefresh()">🔄 Refresh Map</button>
-                <button class="btn" onclick="toggleAutoRefresh()">Auto-Update Map: <span
-                        id="autoRefreshStatus">ON</span></button>
-            </div>
+    <div class="card">
+      <span class="card-icon">🛰️</span>
+      <div class="card-label">Satellites</div>
+      <div id="sat" class="card-value loading">--</div>
+      <div class="gps-quality">
+        <div class="quality-bar">
+          <div class="quality-fill" id="satQuality" style="width:0%"></div>
         </div>
-        <div id="map"></div>
+        <span id="satQualityText" class="card-subtitle">Poor</span>
+      </div>
     </div>
-</div>
 
-<!-- GPS History Modal -->
+    <div class="card">
+      <span class="card-icon">🏔️</span>
+      <div class="card-label">Altitude</div>
+      <div id="alt" class="card-value loading">--</div>
+      <div class="card-subtitle">meters</div>
+    </div>
+
+    <div class="card">
+      <span class="card-icon">📅</span>
+      <div class="card-label">Date &amp; Time</div>
+      <div id="date" class="card-value loading">--/--/----</div>
+      <div id="time" class="card-subtitle">--:--:--</div>
+    </div>
+  </div>
+
+  <!-- ── Alcohol Cards ─────────────────────── -->
+  <div class="cards-row">
+    <div class="card">
+      <span class="card-icon">🍺</span>
+      <div class="card-label">Alcohol Level</div>
+      <div id="alcoholRaw" class="card-value loading">--</div>
+      <div class="card-subtitle">raw sensor value</div>
+    </div>
+
+    <div class="card">
+      <span class="card-icon">🚨</span>
+      <div class="card-label">Alcohol Status</div>
+      <div id="alcoholStatus" class="card-value loading">--</div>
+    </div>
+  </div>
+
+  <!-- ── Map ───────────────────────────────── -->
+  <div class="map-section">
+    <div class="map-header">
+      <div class="map-title">📌 Real-time Location</div>
+      <div class="map-controls">
+        <button class="btn-map" onclick="centerMap()">⊕ Center</button>
+        <button class="btn-map" onclick="toggleAutoCenter()">
+          Auto-Center: <span id="autoCenterStatus">ON</span>
+        </button>
+        <button class="btn-map" onclick="manualRefresh()">🔄 Refresh</button>
+        <button class="btn-map" onclick="toggleAutoRefresh()">
+          Auto-Update: <span id="autoRefreshStatus">ON</span>
+        </button>
+      </div>
+    </div>
+    <div id="map"></div>
+  </div>
+
+</div><!-- /container -->
+
+<!-- ── GPS History Modal ──────────────────── -->
 <div id="historyModal" class="modal">
-    <div class="modal-content">
-        <div class="modal-header">
-            <h2>📊 GPS History & Logs</h2>
-            <button class="modal-close" onclick="closeHistoryModal()">×</button>
-        </div>
-        <div class="modal-body">
-            <div class="stats-grid" id="historyStats">
-                <div class="stat-card">
-                    <h3>Total Records</h3>
-                    <p id="totalRecords">0</p>
-                </div>
-                <div class="stat-card">
-                    <h3>Max Speed</h3>
-                    <p id="maxSpeed">0 km/h</p>
-                </div>
-                <div class="stat-card">
-                    <h3>Avg Satellites</h3>
-                    <p id="avgSat">0</p>
-                </div>
-                <div class="stat-card">
-                    <h3>Distance Traveled</h3>
-                    <p id="totalDistance">0 km</p>
-                </div>
-            </div>
-
-            <div class="history-controls">
-                <select id="limitSelect" onchange="loadGPSHistory()">
-                    <option value="50">Last 50 records</option>
-                    <option value="100" selected>Last 100 records</option>
-                    <option value="200">Last 200 records</option>
-                    <option value="500">Last 500 records</option>
-                </select>
-                <input type="date" id="filterDate" onchange="loadGPSHistory()" placeholder="Filter by date">
-                <button class="btn-export" onclick="exportToCSV()">📥 Export to CSV</button>
-                <button class="btn-export" onclick="clearAllHistory()">🗑️ Clear History</button>
-            </div>
-
-            <div class="history-table-wrapper">
-                <table class="history-table">
-                    <thead>
-                        <tr>
-                            <th>#</th>
-                            <th>Date & Time</th>
-                            <th>Latitude</th>
-                            <th>Longitude</th>
-                            <th>Speed</th>
-                            <th>Satellites</th>
-                            <th>Altitude</th>
-                            <th>Alcohol</th>
-                            <th>Status</th>
-                        </tr>
-                    </thead>
-                    <tbody id="historyTableBody">
-                        <tr>
-                            <td colspan="9" class="no-data">Loading...</td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-        </div>
+  <div class="modal-content">
+    <div class="modal-header">
+      <h2>📊 GPS <span>History</span> &amp; Logs</h2>
+      <button class="modal-close" onclick="closeHistoryModal()">✕</button>
     </div>
+    <div class="modal-body">
+
+      <div class="stats-grid" id="historyStats">
+        <div class="stat-card">
+          <h3>Total Records</h3>
+          <p id="totalRecords">0</p>
+        </div>
+        <div class="stat-card">
+          <h3>Max Speed</h3>
+          <p id="maxSpeed">0 km/h</p>
+        </div>
+        <div class="stat-card">
+          <h3>Avg Satellites</h3>
+          <p id="avgSat">0</p>
+        </div>
+        <div class="stat-card">
+          <h3>Distance</h3>
+          <p id="totalDistance">0 km</p>
+        </div>
+      </div>
+
+      <div class="history-controls">
+        <select id="limitSelect" onchange="loadGPSHistory()">
+          <option value="50">Last 50 records</option>
+          <option value="100" selected>Last 100 records</option>
+          <option value="200">Last 200 records</option>
+          <option value="500">Last 500 records</option>
+        </select>
+        <input type="date" id="filterDate" onchange="loadGPSHistory()">
+        <button class="btn-action" onclick="exportToCSV()">📥 Export CSV</button>
+        <button class="btn-action btn-action-danger" onclick="clearAllHistory()">🗑️ Clear</button>
+      </div>
+
+      <div class="history-table-wrapper">
+        <table class="history-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Date &amp; Time</th>
+              <th>Latitude</th>
+              <th>Longitude</th>
+              <th>Speed</th>
+              <th>Satellites</th>
+              <th>Altitude</th>
+              <th>Alcohol</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="historyTableBody">
+            <tr><td colspan="9" class="no-data">Loading...</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+    </div>
+  </div>
 </div>
 
+<!-- ── Scripts (ALL ORIGINAL — UNCHANGED) ── -->
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
     let map = L.map('map').setView([14.123456, 121.123456], 16);
@@ -826,7 +324,6 @@
         });
     }
     
-
 
     // Start fetching data every 2 seconds
     setInterval(fetchData, 2000);
