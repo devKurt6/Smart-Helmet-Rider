@@ -32,29 +32,11 @@ function initLoginPage() {
   const form = document.getElementById('loginForm');
   if (!form) return;
 
-  // Restore saved credentials on page load
-  const savedUsername = localStorage.getItem('saved_username');
-  const savedPassword = localStorage.getItem('saved_password');
-  if (savedUsername && savedPassword) {
-    document.getElementById('username').value = savedUsername;
-    document.getElementById('password').value = savedPassword;
-    document.getElementById('rememberMe').checked = true;
-  }
-
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
-    const username   = document.getElementById('username').value;
-    const password   = document.getElementById('password').value;
+    const username  = document.getElementById('username').value;
+    const password  = document.getElementById('password').value;
     const rememberMe = document.getElementById('rememberMe').checked;
-
-    // Save or clear credentials based on checkbox
-    if (rememberMe) {
-      localStorage.setItem('saved_username', username);
-      localStorage.setItem('saved_password', password);
-    } else {
-      localStorage.removeItem('saved_username');
-      localStorage.removeItem('saved_password');
-    }
 
     setLoading('loginBtn', true);
     hideAllMsgs();

@@ -19,12 +19,6 @@
     }
     .leaflet-popup-tip { background: #141c30; }
     .leaflet-popup-close-button { color: #7a8aaa !important; }
-
-    /* Alcohol status card colors */
-    .alcohol-normal  { color: #e8edf5; }
-    .alcohol-warning { color: #ffb020; }
-    .alcohol-danger  { color: #ff3b5c; animation: alcoholPulse 1s infinite; }
-    @keyframes alcoholPulse { 0%,100%{opacity:1} 50%{opacity:0.5} }
   </style>
 </head>
 <body class="dash-body">
@@ -288,18 +282,7 @@
 
           //alcohol data
           document.getElementById("alcoholRaw").textContent = data.alcohol_raw;
-
-          // Update alcohol status text + color
-          const alcoholEl = document.getElementById("alcoholStatus");
-          alcoholEl.textContent = data.alcohol_status;
-          alcoholEl.className = 'card-value';
-          if (data.alcohol_status === 'STRONG_ALCOHOL') {
-            alcoholEl.classList.add('alcohol-danger');
-          } else if (data.alcohol_status === 'ALCOHOL_PRESENT') {
-            alcoholEl.classList.add('alcohol-warning');
-          } else {
-            alcoholEl.classList.add('alcohol-normal');
-          }
+          document.getElementById("alcoholStatus").textContent = data.alcohol_status;
 
 
           // Update status
@@ -458,13 +441,16 @@
     // Get alcohol status badge
     function getAlcoholBadge(status) {
       if (!status) return '<span class="badge badge-normal">N/A</span>';
-      if (status === 'STRONG_ALCOHOL') {
-        return `<span class="badge badge-danger">${status}</span>`;
-      } else if (status === 'ALCOHOL_PRESENT') {
-        return `<span class="badge badge-warning">${status}</span>`;
-      } else {
+      
+      const statusLower = status.toLowerCase();
+      if (statusLower.includes('normal') || statusLower.includes('safe')) {
         return `<span class="badge badge-normal">${status}</span>`;
+      } else if (statusLower.includes('warning') || statusLower.includes('caution')) {
+        return `<span class="badge badge-warning">${status}</span>`;
+      } else if (statusLower.includes('danger') || statusLower.includes('high')) {
+        return `<span class="badge badge-danger">${status}</span>`;
       }
+      return `<span class="badge badge-normal">${status}</span>`;
     }
 
     // Format date and time
