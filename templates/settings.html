@@ -5,25 +5,59 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Settings — Helmet GPS Tracker</title>
   <link rel="stylesheet" href="/static/styles.css">
+  <!-- Apply theme INSTANTLY before body paints — prevents any flash -->
+  <script>if(localStorage.getItem('theme')==='light')document.documentElement.classList.add('light-mode');</script>
 </head>
-<body class="dash-body">
+<body>
 
-<div class="container">
-
-  <!-- ── Header ───────────────────────────── -->
-  <header class="dash-header">
-    <div class="dash-brand">
-      <span class="dash-brand-icon">⚙️</span>
-      <h1>System <span>Settings</span></h1>
+<header class="app-header">
+  <div class="header-left">
+    <button class="sidebar-toggle" onclick="toggleSidebar()">☰</button>
+    <a href="/dashboard" class="app-brand">
+      <span class="brand-icon">🏍️</span>
+      <span class="brand-name">Helmet <span>GPS</span> Tracker</span>
+    </a>
+  </div>
+  <div class="header-right">
+    <button class="theme-toggle" id="themeToggle" onclick="toggleTheme()">
+      <span id="themeIcon">☀️</span>
+      <span id="themeLabel">Light</span>
+    </button>
+    <div class="header-user">
+      <span>⚙️</span>
+      <span>Settings</span>
     </div>
-    <div class="dash-header-right">
-      <a href="/dashboard" class="btn-header btn-accent">
-        ← <span class="label">Back to Dashboard</span>
-      </a>
-    </div>
-  </header>
+  </div>
+</header>
 
-  <!-- ── Email Settings Card ──────────────── -->
+<div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
+
+<aside class="app-sidebar" id="appSidebar">
+  <div class="sidebar-section">
+    <div class="sidebar-section-label">Main</div>
+    <a href="/dashboard" class="nav-item">
+      <span class="nav-icon">📊</span>
+      <span class="nav-label">Dashboard</span>
+    </a>
+    <a href="/dashboard" class="nav-item" onclick="event.preventDefault(); window.location='/dashboard'">
+      <span class="nav-icon">📋</span>
+      <span class="nav-label">GPS History</span>
+    </a>
+  </div>
+  <div class="sidebar-divider"></div>
+  <div class="sidebar-section">
+    <div class="sidebar-section-label">System</div>
+    <a href="/settings" class="nav-item active">
+      <span class="nav-icon">⚙️</span>
+      <span class="nav-label">Settings</span>
+    </a>
+  </div>
+</aside>
+
+<main class="app-main">
+
+  <div class="page-title">⚙️ System <span>Settings</span></div>
+
   <div class="settings-card">
     <h2>📧 Email <span>Configuration</span></h2>
     <p>Configure SMTP settings for password reset emails and notifications.</p>
@@ -34,7 +68,6 @@
 
     <form id="settingsForm">
 
-      <!-- Toggle -->
       <div class="form-group">
         <div class="toggle-group">
           <label class="toggle-switch">
@@ -46,7 +79,6 @@
         <small>Turn on to send password reset emails</small>
       </div>
 
-      <!-- SMTP Server & Port -->
       <div class="form-row">
         <div class="form-group">
           <label for="smtpServer">SMTP Server</label>
@@ -60,7 +92,6 @@
         </div>
       </div>
 
-      <!-- SMTP Credentials -->
       <div class="form-group">
         <label for="smtpUsername">Email Address (SMTP Username)</label>
         <input type="email" id="smtpUsername" placeholder="your-email@gmail.com">
@@ -76,7 +107,6 @@
         <small>⚠️ Use Gmail App Password, not your regular password</small>
       </div>
 
-      <!-- Sender Info -->
       <div class="form-row">
         <div class="form-group">
           <label for="senderEmail">Sender Email</label>
@@ -96,7 +126,6 @@
       </div>
     </form>
 
-    <!-- Help Box -->
     <div class="help-box">
       <h3>📖 How to Get Gmail App Password</h3>
       <ol>
@@ -109,8 +138,18 @@
     </div>
   </div>
 
-</div><!-- /container -->
+</main>
 
+<script>
+  function toggleSidebar() {
+    document.getElementById('appSidebar').classList.toggle('open');
+    document.getElementById('sidebarOverlay').classList.toggle('open');
+  }
+  function closeSidebar() {
+    document.getElementById('appSidebar').classList.remove('open');
+    document.getElementById('sidebarOverlay').classList.remove('open');
+  }
+</script>
 <script src="/static/script.js"></script>
 </body>
 </html>

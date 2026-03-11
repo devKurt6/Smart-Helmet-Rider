@@ -350,8 +350,63 @@ function initSettingsPage() {
   };
 }
 
+/* ── Global Theme (shared across ALL pages) ─── */
+function applyTheme(mode) {
+  // Toggle on <html> so the class exists before <body> renders
+  if (mode === 'light') {
+    document.documentElement.classList.add('light-mode');
+    const icon  = document.getElementById('themeIcon');
+    const label = document.getElementById('themeLabel');
+    if (icon)  icon.textContent  = '🌙';
+    if (label) label.textContent = 'Dark';
+  } else {
+    document.documentElement.classList.remove('light-mode');
+    const icon  = document.getElementById('themeIcon');
+    const label = document.getElementById('themeLabel');
+    if (icon)  icon.textContent  = '☀️';
+    if (label) label.textContent = 'Light';
+  }
+}
+
+function toggleTheme() {
+  const next = document.documentElement.classList.contains('light-mode') ? 'dark' : 'light';
+  localStorage.setItem('theme', next);
+  applyTheme(next);
+}
+
+/* ── Admin Check — hide/show Settings nav ────── */
+function checkAdminAccess() {
+  fetch('/api/user')
+    .then(res => res.json())
+    .then(data => {
+      const settingsNav = document.getElementById('settingsNav');
+      if (!settingsNav) return;
+      // Show Settings only if user is admin
+      if (data.is_admin === true || data.role === 'admin' || data.username === 'admin') {
+        settingsNav.style.display = 'flex';
+      } else {
+        settingsNav.style.display = 'none';
+      }
+    })
+    .catch(() => {
+      // If we can't verify, hide Settings to be safe
+      const settingsNav = document.getElementById('settingsNav');
+      if (settingsNav) settingsNav.style.display = 'none';
+    });
+}
+
 /* ── Auto-init on DOMContentLoaded ─────────── */
 document.addEventListener('DOMContentLoaded', () => {
+  // Apply saved theme instantly (no transition yet)
+  applyTheme(localStorage.getItem('theme') || 'dark');
+
+  // Enable smooth transitions AFTER first paint so page load looks clean
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      document.documentElement.classList.add('theme-ready');
+    });
+  });
+
   initLoginPage();
   initRegisterPage();
   initForgotPage();

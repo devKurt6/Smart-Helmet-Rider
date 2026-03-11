@@ -1409,5 +1409,5 @@ if __name__ == "__main__":
         create_user('admin', 'admin123', 'admin@example.com')
         print("Default admin user created (username: admin, password: admin123)")
     
-    app.run(host="0.0.0.0", port=5000, debug=True)
+    app.run(host="0.0.0.0", port=2000, debug=True)
 

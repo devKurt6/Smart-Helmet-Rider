@@ -5,8 +5,16 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Helmet GPS — Login</title>
   <link rel="stylesheet" href="/static/styles.css">
+  <!-- Apply saved theme immediately to prevent flash -->
+  <!-- Apply theme INSTANTLY before body paints — prevents any flash -->
+  <script>if(localStorage.getItem('theme')==='light')document.documentElement.classList.add('light-mode');</script>
 </head>
 <body class="auth-body">
+  <button class="auth-theme-btn" onclick="toggleTheme()" id="themeToggle">
+    <span id="themeIcon">☀️</span>
+    <span id="themeLabel">Light</span>
+  </button>
+
 
   <div class="auth-card">
     <div class="auth-header">
@@ -45,7 +53,7 @@
       </div>
 
       <button type="submit" class="btn-primary" id="loginBtn">
-        <span class="btn-text">Login</span>
+        <span class="btn-text">Sign In</span>
         <div class="loading-spinner"></div>
       </button>
     </form>
