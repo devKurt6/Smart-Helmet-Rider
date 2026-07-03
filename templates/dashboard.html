@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Dashboard — Helmet GPS Tracker</title>
+  <title>{{ helmet_name }} — Helmet GPS Tracker</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
   <link rel="stylesheet" href="/static/styles.css">
   <style>
@@ -25,7 +25,7 @@
 <header class="app-header">
   <div class="header-left">
     <button class="sidebar-toggle" onclick="toggleSidebar()">☰</button>
-    <a href="/dashboard" class="app-brand">
+    <a href="/fleet" class="app-brand">
       <span class="brand-icon">🏍️</span>
       <span class="brand-name">Helmet <span>GPS</span> Tracker</span>
     </a>
@@ -51,10 +51,18 @@
 
 <aside class="app-sidebar" id="appSidebar">
   <div class="sidebar-section">
-    <div class="sidebar-section-label">Main</div>
-    <a href="/dashboard" class="nav-item active">
+    <div class="sidebar-section-label">Fleet</div>
+    <a href="/fleet" class="nav-item">
+      <span class="nav-icon">🚀</span>
+      <span class="nav-label">Fleet Overview</span>
+    </a>
+  </div>
+  <div class="sidebar-divider"></div>
+  <div class="sidebar-section">
+    <div class="sidebar-section-label">This Helmet</div>
+    <a href="/dashboard/{{ helmet_id }}" class="nav-item active">
       <span class="nav-icon">📊</span>
-      <span class="nav-label">Dashboard</span>
+      <span class="nav-label">Live Dashboard</span>
     </a>
     <button class="nav-item" onclick="showHistoryModal()">
       <span class="nav-icon">📋</span>
@@ -79,7 +87,7 @@
 
 <main class="app-main">
 
-  <div class="page-title">📊 Live Dashboard <span id="lastUpdated"></span></div>
+  <div class="page-title">📊 {{ helmet_name }} <span id="lastUpdated"></span></div>
 
   <div class="cards-grid">
     <div class="card">
@@ -204,13 +212,16 @@
       document.getElementById('sidebarOverlay').classList.remove('open');
     }
 
+    // Helmet ID injected by Flask
+    const HELMET_ID = "{{ helmet_id }}";
+
     let map = L.map('map').setView([14.123456, 121.123456], 16);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom: 19, attribution: '© OpenStreetMap contributors'
     }).addTo(map);
 
     let marker = L.marker([14.123456, 121.123456]).addTo(map);
-    marker.bindPopup("<b>Helmet Location</b><br>Waiting for GPS data...").openPopup();
+    marker.bindPopup(`<b>🏍️ {{ helmet_name }}</b><br>Waiting for GPS data...`).openPopup();
 
     let autoCenter = true;
     let autoRefreshMap = true;
@@ -236,7 +247,7 @@
       if (!latLngInvalid) {
         lastValidCoords = [data.lat, data.lng];
         marker.setLatLng(lastValidCoords);
-        marker.setPopupContent(`<b>🏍️ Helmet Location</b><br>Speed: ${data.speed.toFixed(1)} km/h<br>Satellites: ${data.sat}`);
+        marker.setPopupContent(`<b>🏍️ {{ helmet_name }}</b><br>Speed: ${data.speed.toFixed(1)} km/h<br>Satellites: ${data.sat}`);
         if (autoCenter) map.setView(lastValidCoords, 16);
       }
     }
@@ -250,7 +261,7 @@
       document.getElementById('satQualityText').textContent = qualityText;
     }
     function fetchData() {
-      fetch("/api/gps")
+      fetch(`/api/gps?helmet_id=${HELMET_ID}`)
         .then(res => res.json())
         .then(data => {
           lastGPSData = data;
@@ -335,7 +346,7 @@
     function loadGPSHistory() {
       const limit = document.getElementById('limitSelect').value;
       const filterDate = document.getElementById('filterDate').value;
-      let url = `/api/gps/history?limit=${limit}`;
+      let url = `/api/gps/history?limit=${limit}&helmet_id=${HELMET_ID}`;
       if (filterDate) url += `&date=${filterDate}`;
       fetch(url)
         .then(res => res.json())
@@ -408,7 +419,7 @@
     function exportToCSV() {
       const limit = document.getElementById('limitSelect').value;
       const filterDate = document.getElementById('filterDate').value;
-      let url = `/api/gps/history?limit=${limit}`;
+      let url = `/api/gps/history?limit=${limit}&helmet_id=${HELMET_ID}`;
       if (filterDate) url += `&date=${filterDate}`;
       fetch(url).then(r => r.json()).then(data => {
         if (data.success && data.logs && data.logs.length > 0) {
@@ -424,7 +435,7 @@
     }
     function clearAllHistory() {
       if (confirm('Are you sure you want to delete ALL GPS history? This action cannot be undone!')) {
-        fetch('/api/gps/clear', {method:'DELETE'}).then(r => r.json()).then(data => {
+        fetch(`/api/gps/clear?helmet_id=${HELMET_ID}`, {method:'DELETE'}).then(r => r.json()).then(data => {
           if (data.success) { alert('History cleared successfully!'); loadGPSHistory(); }
           else alert('Failed to clear history: ' + (data.message || 'Unknown error'));
         }).catch(() => alert('Failed to clear history'));

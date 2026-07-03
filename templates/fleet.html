@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fleet Overview — Helmet GPS Tracker</title>
+  <link rel="stylesheet" href="/static/styles.css">
+  <script>if(localStorage.getItem('theme')==='light')document.documentElement.classList.add('light-mode');</script>
+  <style>
+    /* ── Summary Bar ── */
+    .fleet-summary {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+    .summary-stat {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--cyan);
+      padding: 14px 18px;
+      border-radius: var(--r-sm);
+    }
+    .summary-stat.stat-online { border-left-color: var(--green); }
+    .summary-stat.stat-alert  { border-left-color: var(--red); }
+    .summary-stat h3 {
+      font-size: 0.68em; font-weight: 600; letter-spacing: 1.2px;
+      text-transform: uppercase; color: var(--text-2); margin-bottom: 6px;
+    }
+    .summary-stat p {
+      font-family: var(--font-mono);
+      font-size: 1.5em; font-weight: 700; color: var(--cyan);
+    }
+    .summary-stat.stat-online p { color: var(--green); }
+    .summary-stat.stat-alert  p { color: var(--red); }
+
+    /* ── Fleet Table ── */
+    .fleet-table-wrap {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--r-md);
+      overflow: hidden;
+    }
+
+    .fleet-table-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 20px;
+      border-bottom: 1px solid var(--border);
+      background: var(--bg-surface);
+    }
+    .fleet-table-title {
+      font-size: 0.85em;
+      font-weight: 600;
+      color: var(--text);
+    }
+    .fleet-count {
+      font-size: 0.75em;
+      color: var(--text-3);
+      font-family: var(--font-mono);
+    }
+
+    /* Table itself */
+    .fleet-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    .fleet-table thead th {
+      padding: 10px 16px;
+      text-align: left;
+      font-size: 0.68em;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1.2px;
+      color: var(--text-3);
+      border-bottom: 1px solid var(--border);
+      background: var(--bg-surface);
+      white-space: nowrap;
+    }
+    .fleet-table tbody tr {
+      border-bottom: 1px solid var(--border);
+      transition: background 0.15s ease;
+      cursor: pointer;
+    }
+    .fleet-table tbody tr:last-child { border-bottom: none; }
+    .fleet-table tbody tr:hover { background: var(--bg-hover); }
+
+    .fleet-table tbody td {
+      padding: 13px 16px;
+      font-size: 0.85em;
+      color: var(--text);
+      vertical-align: middle;
+    }
+
+    /* Col: Rider */
+    .rider-info { display: flex; align-items: center; gap: 12px; }
+    .rider-avatar {
+      width: 36px; height: 36px;
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.1em; flex-shrink: 0;
+    }
+    .rider-name { font-weight: 600; color: var(--text); font-size: 0.9em; }
+    .rider-id   { font-size: 0.72em; color: var(--text-3); font-family: var(--font-mono); }
+
+    /* Col: Status dot */
+    .status-pill {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 3px 10px;
+      border-radius: var(--r-pill);
+      font-size: 0.72em; font-weight: 600;
+      text-transform: uppercase; letter-spacing: 0.5px;
+      white-space: nowrap;
+    }
+    .status-pill.online  { background: rgba(63,185,80,0.1);   color: var(--green); border: 1px solid rgba(63,185,80,0.2); }
+    .status-pill.offline { background: rgba(139,148,158,0.08); color: var(--text-3); border: 1px solid var(--border); }
+    .status-pill .dot {
+      width: 6px; height: 6px; border-radius: 50%;
+      background: currentColor; flex-shrink: 0;
+    }
+    .status-pill.online .dot { animation: pulse 2s infinite; }
+
+    /* Col: Alcohol */
+    .alcohol-pill {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 3px 10px;
+      border-radius: var(--r-pill);
+      font-size: 0.72em; font-weight: 600;
+      white-space: nowrap;
+    }
+    .alcohol-pill.normal  { background: rgba(63,185,80,0.1);  color: var(--green); border: 1px solid rgba(63,185,80,0.2); }
+    .alcohol-pill.warning { background: rgba(210,153,34,0.1); color: var(--amber); border: 1px solid rgba(210,153,34,0.2); }
+    .alcohol-pill.danger  { background: rgba(248,81,73,0.1);  color: var(--red);   border: 1px solid rgba(248,81,73,0.2);
+                            animation: alcoholPulse 1s infinite; }
+    @keyframes alcoholPulse { 0%,100%{opacity:1} 50%{opacity:0.5} }
+
+    /* Col: Data values */
+    .data-val {
+      font-family: var(--font-mono);
+      font-size: 0.88em;
+      color: var(--text);
+    }
+    .data-val.muted { color: var(--text-3); }
+
+    /* Col: Action */
+    .btn-open-row {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 5px 12px;
+      background: transparent;
+      border: 1px solid var(--border);
+      border-radius: var(--r-sm);
+      color: var(--cyan);
+      font-size: 0.75em; font-weight: 600;
+      text-decoration: none;
+      transition: all 0.2s ease;
+      white-space: nowrap;
+    }
+    .btn-open-row:hover {
+      background: rgba(88,166,255,0.1);
+      border-color: var(--cyan);
+      text-decoration: none;
+    }
+
+    .btn-rename-row {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 5px 10px;
+      background: transparent;
+      border: 1px solid var(--border);
+      border-radius: var(--r-sm);
+      color: var(--text-2);
+      font-size: 0.75em; font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      margin-right: 6px;
+    }
+    .btn-rename-row:hover { background: var(--bg-hover); color: var(--text); }
+
+    /* Empty state */
+    .fleet-empty {
+      text-align: center; padding: 60px 20px;
+      color: var(--text-3);
+    }
+    .fleet-empty .empty-icon { font-size: 2.5em; margin-bottom: 14px; }
+    .fleet-empty p { font-size: 0.85em; line-height: 1.7; }
+
+    /* Rename modal */
+    .rename-modal {
+      display: none; position: fixed; inset: 0; z-index: 9999;
+      background: rgba(0,0,0,0.7); backdrop-filter: blur(4px);
+      align-items: center; justify-content: center;
+    }
+    .rename-modal.show { display: flex; }
+    .rename-box {
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: var(--r-lg); padding: 28px;
+      width: 100%; max-width: 380px;
+      box-shadow: 0 24px 64px rgba(0,0,0,0.5);
+      animation: fadeUp 0.2s ease;
+    }
+    .rename-box h3 { font-size: 1em; font-weight: 700; margin-bottom: 4px; color: var(--text); }
+    .rename-box p  { font-size: 0.78em; color: var(--text-3); margin-bottom: 16px; }
+    .rename-box input {
+      width: 100%; padding: 9px 12px;
+      background: var(--bg-surface); border: 1px solid var(--border);
+      border-radius: var(--r-sm); color: var(--text);
+      font-size: 0.9em; margin-bottom: 14px; outline: none; transition: all 0.2s ease;
+    }
+    .rename-box input:focus { border-color: var(--cyan); }
+    .rename-actions { display: flex; gap: 8px; justify-content: flex-end; }
+    .btn-cancel {
+      padding: 7px 14px; background: var(--bg-surface);
+      border: 1px solid var(--border); border-radius: var(--r-sm);
+      color: var(--text-2); font-size: 0.82em; cursor: pointer; transition: all 0.2s ease;
+    }
+    .btn-cancel:hover { border-color: var(--border-2); color: var(--text); }
+    .btn-save-name {
+      padding: 7px 16px; background: var(--cyan);
+      border: 1px solid var(--cyan); border-radius: var(--r-sm);
+      color: #0d1117; font-size: 0.82em; font-weight: 700; cursor: pointer; transition: all 0.2s ease;
+    }
+    .btn-save-name:hover { background: var(--cyan-dim); }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      .fleet-summary { grid-template-columns: repeat(2, 1fr); }
+      .fleet-table thead th:nth-child(4),
+      .fleet-table tbody td:nth-child(4),
+      .fleet-table thead th:nth-child(5),
+      .fleet-table tbody td:nth-child(5) { display: none; }
+    }
+    @media (max-width: 480px) {
+      .fleet-summary { grid-template-columns: repeat(2, 1fr); }
+    }
+  </style>
+</head>
+<body>
+
+<header class="app-header">
+  <div class="header-left">
+    <button class="sidebar-toggle" onclick="toggleSidebar()">☰</button>
+    <a href="/fleet" class="app-brand">
+      <span class="brand-icon">🏍️</span>
+      <span class="brand-name">Helmet <span>GPS</span> Tracker</span>
+    </a>
+  </div>
+  <div class="header-right">
+    <button class="theme-toggle" id="themeToggle" onclick="toggleTheme()">
+      <span id="themeIcon">☀️</span>
+      <span id="themeLabel">Light</span>
+    </button>
+    <div class="header-user">
+      <span>👤</span>
+      <span class="user-name" id="currentUser">User</span>
+    </div>
+    <button class="btn-logout" onclick="handleLogout()">🚪 Logout</button>
+  </div>
+</header>
+
+<div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
+
+<aside class="app-sidebar" id="appSidebar">
+  <div class="sidebar-section">
+    <div class="sidebar-section-label">Fleet</div>
+    <a href="/fleet" class="nav-item active">
+      <span class="nav-icon">🚀</span>
+      <span class="nav-label">Fleet Overview</span>
+    </a>
+  </div>
+  <div class="sidebar-divider"></div>
+  <div class="sidebar-section">
+    <div class="sidebar-section-label">System</div>
+    <a href="/settings" class="nav-item" id="settingsNav" style="display:none;">
+      <span class="nav-icon">⚙️</span>
+      <span class="nav-label">Settings</span>
+    </a>
+  </div>
+  <div class="sidebar-bottom">
+    <button class="nav-item" onclick="handleLogout()">
+      <span class="nav-icon">🚪</span>
+      <span class="nav-label">Logout</span>
+    </button>
+  </div>
+</aside>
+
+<main class="app-main">
+
+  <div class="page-title">
+    🚀 Fleet Overview
+    <span id="lastRefreshed"></span>
+  </div>
+
+  <!-- Summary stats -->
+  <div class="fleet-summary">
+    <div class="summary-stat">
+      <h3>Total Helmets</h3>
+      <p id="totalHelmets">0</p>
+    </div>
+    <div class="summary-stat stat-online">
+      <h3>Online Now</h3>
+      <p id="onlineCount">0</p>
+    </div>
+    <div class="summary-stat stat-alert">
+      <h3>Alcohol Alerts</h3>
+      <p id="alertCount">0</p>
+    </div>
+    <div class="summary-stat">
+      <h3>Offline</h3>
+      <p id="offlineCount">0</p>
+    </div>
+  </div>
+
+  <!-- Fleet list table -->
+  <div class="fleet-table-wrap">
+    <div class="fleet-table-header">
+      <span class="fleet-table-title">🏍️ Registered Helmets</span>
+      <span class="fleet-count" id="fleetCount">— helmets</span>
+    </div>
+    <div id="fleetGrid">
+      <div class="fleet-empty">
+        <div class="empty-icon">📡</div>
+        <p>Loading helmets...</p>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<!-- Rename Modal -->
+<div class="rename-modal" id="renameModal">
+  <div class="rename-box">
+    <h3>✏️ Rename Helmet</h3>
+    <p id="renameSubtitle">Enter a friendly display name</p>
+    <input type="text" id="renameInput" placeholder="e.g. Rider 1 - Juan" maxlength="40">
+    <div class="rename-actions">
+      <button class="btn-cancel" onclick="closeRenameModal()">Cancel</button>
+      <button class="btn-save-name" onclick="saveRename()">Save</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  function toggleSidebar() {
+    document.getElementById('appSidebar').classList.toggle('open');
+    document.getElementById('sidebarOverlay').classList.toggle('open');
+  }
+  function closeSidebar() {
+    document.getElementById('appSidebar').classList.remove('open');
+    document.getElementById('sidebarOverlay').classList.remove('open');
+  }
+
+  function handleLogout() {
+    if (confirm('Are you sure you want to logout?')) {
+      const token = localStorage.getItem('auth_token') || sessionStorage.getItem('auth_token');
+      fetch('/api/logout', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token })
+      }).finally(() => {
+        localStorage.removeItem('auth_token');
+        sessionStorage.removeItem('auth_token');
+        window.location.href = '/';
+      });
+    }
+  }
+
+  function getAlcoholClass(status) {
+    if (status === 'STRONG_ALCOHOL')  return 'danger';
+    if (status === 'ALCOHOL_PRESENT') return 'warning';
+    return 'normal';
+  }
+
+  function getAlcoholLabel(status) {
+    if (status === 'STRONG_ALCOHOL')  return '🚨 Strong Alcohol';
+    if (status === 'ALCOHOL_PRESENT') return '⚠️ Alcohol Present';
+    return '✅ Normal';
+  }
+
+  function timeAgo(isoStr) {
+    if (!isoStr) return 'Never';
+    const diff = (Date.now() - new Date(isoStr)) / 1000;
+    if (diff < 10)   return 'Just now';
+    if (diff < 60)   return `${Math.floor(diff)}s ago`;
+    if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+    return `${Math.floor(diff / 3600)}h ago`;
+  }
+
+  function renderFleet(helmets) {
+    const grid = document.getElementById('fleetGrid');
+
+    if (!helmets || helmets.length === 0) {
+      grid.innerHTML = `
+        <div class="fleet-empty">
+          <div class="empty-icon">📡</div>
+          <p>No helmets registered yet.<br>Once an ESP32 sends data, it will appear here automatically.</p>
+        </div>`;
+      document.getElementById('totalHelmets').textContent = '0';
+      document.getElementById('onlineCount').textContent  = '0';
+      document.getElementById('alertCount').textContent   = '0';
+      document.getElementById('offlineCount').textContent = '0';
+      document.getElementById('fleetCount').textContent   = '0 helmets';
+      return;
+    }
+
+    let online = 0, alerts = 0;
+
+    const rows = helmets.map((h, i) => {
+      const isOnline     = h.is_online;
+      const alcoholClass = getAlcoholClass(h.alcohol_status);
+      const hasAlert     = alcoholClass !== 'normal' && isOnline;
+
+      if (isOnline) online++;
+      if (hasAlert) alerts++;
+
+      const speed = h.speed != null ? `${parseFloat(h.speed).toFixed(1)} km/h` : '--';
+      const sat   = h.sat   != null ? h.sat : '--';
+      const loc   = (h.lat != null && h.lng != null)
+                    ? `${parseFloat(h.lat).toFixed(4)}, ${parseFloat(h.lng).toFixed(4)}`
+                    : '--';
+
+      return `
+        <tr onclick="window.location='/dashboard/${h.helmet_id}'">
+          <td style="width:40px;text-align:center;color:var(--text-3);font-size:0.8em;font-family:var(--font-mono)">${i + 1}</td>
+          <td>
+            <div class="rider-info">
+              <div class="rider-avatar">🏍️</div>
+              <div>
+                <div class="rider-name">${h.name}</div>
+                <div class="rider-id">${h.helmet_id}</div>
+              </div>
+            </div>
+          </td>
+          <td>
+            <span class="status-pill ${isOnline ? 'online' : 'offline'}">
+              <span class="dot"></span>
+              ${isOnline ? 'Online' : 'Offline'}
+            </span>
+          </td>
+          <td><span class="data-val ${speed === '--' ? 'muted' : ''}">${speed}</span></td>
+          <td><span class="data-val ${sat === '--' ? 'muted' : ''}">${sat}</span></td>
+          <td><span class="data-val ${loc === '--' ? 'muted' : ''}" style="font-size:0.82em">${loc}</span></td>
+          <td>
+            <span class="alcohol-pill ${alcoholClass}">
+              ${getAlcoholLabel(h.alcohol_status)}
+            </span>
+          </td>
+          <td><span class="data-val muted">${timeAgo(h.last_seen)}</span></td>
+          <td onclick="event.stopPropagation()">
+            <button class="btn-rename-row" onclick="openRenameModal('${h.helmet_id}', '${h.name}', event)">✏️</button>
+            <a href="/dashboard/${h.helmet_id}" class="btn-open-row">Open →</a>
+          </td>
+        </tr>`;
+    });
+
+    grid.innerHTML = `
+      <table class="fleet-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Helmet / Rider</th>
+            <th>Status</th>
+            <th>Speed</th>
+            <th>Satellites</th>
+            <th>Location</th>
+            <th>Alcohol</th>
+            <th>Last Seen</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rows.join('')}
+        </tbody>
+      </table>`;
+
+    document.getElementById('totalHelmets').textContent = helmets.length;
+    document.getElementById('onlineCount').textContent  = online;
+    document.getElementById('alertCount').textContent   = alerts;
+    document.getElementById('offlineCount').textContent = helmets.length - online;
+    document.getElementById('fleetCount').textContent   = `${helmets.length} helmet${helmets.length !== 1 ? 's' : ''}`;
+
+    const now = new Date();
+    document.getElementById('lastRefreshed').textContent =
+      `Refreshed at ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}:${String(now.getSeconds()).padStart(2,'0')}`;
+  }
+
+  function loadFleet() {
+    fetch('/api/helmets')
+      .then(r => r.json())
+      .then(data => { if (data.success) renderFleet(data.helmets); })
+      .catch(err => console.error('Fleet load error:', err));
+  }
+
+  // Rename modal
+  let renamingHelmetId = null;
+  function openRenameModal(helmetId, currentName, event) {
+    event.preventDefault();
+    event.stopPropagation();
+    renamingHelmetId = helmetId;
+    document.getElementById('renameInput').value = currentName || helmetId;
+    document.getElementById('renameSubtitle').textContent = `Renaming: ${helmetId}`;
+    document.getElementById('renameModal').classList.add('show');
+    setTimeout(() => document.getElementById('renameInput').focus(), 100);
+  }
+  function closeRenameModal() {
+    document.getElementById('renameModal').classList.remove('show');
+    renamingHelmetId = null;
+  }
+  function saveRename() {
+    const name = document.getElementById('renameInput').value.trim();
+    if (!name || !renamingHelmetId) return;
+    fetch(`/api/helmets/${renamingHelmetId}/rename`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name })
+    }).then(() => { closeRenameModal(); loadFleet(); });
+  }
+  document.getElementById('renameInput')?.addEventListener('keydown', e => {
+    if (e.key === 'Enter')  saveRename();
+    if (e.key === 'Escape') closeRenameModal();
+  });
+
+  function loadUserInfo() {
+    fetch('/api/user').then(r => r.json()).then(data => {
+      if (data.username) document.getElementById('currentUser').textContent = data.username;
+      const nav = document.getElementById('settingsNav');
+      if (nav) nav.style.display = data.is_admin ? 'flex' : 'none';
+    }).catch(() => {});
+  }
+
+  loadFleet();
+  loadUserInfo();
+  setInterval(loadFleet, 5000);
+</script>
+<script src="/static/script.js"></script>
+</body>
+</html>

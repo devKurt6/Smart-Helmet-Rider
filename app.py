@@ -57,22 +57,17 @@ def get_email_config():
 # Database configuration
 DATABASE = 'mydb.db'
 
-# Store latest GPS data from ESP32
-latest_data = {
-    "lat": None,
-    "lng": None,
-    "speed": None,
-    "sat": None,
-    "alt": None,
-    "hour": None,
-    "minute": None,
-    "second": None,
-    "day": None,
-    "month": None,
-    "year": None,
-    "alcohol_raw": None,
-    "alcohol_status": None
-}
+# Store latest GPS data per helmet { helmet_id: { ...data } }
+latest_data = {}
+
+def get_empty_gps():
+    return {
+        "lat": None, "lng": None, "speed": None, "sat": None, "alt": None,
+        "hour": None, "minute": None, "second": None,
+        "day": None, "month": None, "year": None,
+        "alcohol_raw": None, "alcohol_status": None,
+        "helmet_id": None, "last_seen": None
+    }
 
 
 # ============================================
@@ -128,6 +123,25 @@ def init_db():
         )
     ''')
     
+    # Create helmets registry table
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS helmets (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            helmet_id TEXT UNIQUE NOT NULL,
+            name TEXT,
+            registered_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            last_seen TIMESTAMP,
+            is_active BOOLEAN DEFAULT 1
+        )
+    ''')
+
+    # Add helmet_id column to gps_logs if it doesn't exist
+    try:
+        cursor.execute('ALTER TABLE gps_logs ADD COLUMN helmet_id TEXT DEFAULT "HELMET_001"')
+        conn.commit()
+    except:
+        pass  # Column already exists
+
     # Create sessions table for token-based auth
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS user_sessions (
@@ -172,6 +186,7 @@ def init_db():
     
     # Initialize default settings
     initialize_default_settings()
+
 
 
 def execute_query(query, params=(), fetch_one=False, fetch_all=False, commit=False):
@@ -312,8 +327,8 @@ def log_gps_data(data):
     """
     query = '''
         INSERT INTO gps_logs 
-        (latitude, longitude, speed, satellites, altitude, date, time, alcohol_raw, alcohol_status)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        (latitude, longitude, speed, satellites, altitude, date, time, alcohol_raw, alcohol_status, helmet_id)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     '''
     
     date_str = f"{data.get('day')}/{data.get('month')}/{data.get('year')}"
@@ -328,38 +343,31 @@ def log_gps_data(data):
         date_str,
         time_str,
         data.get('alcohol_raw'),
-        data.get('alcohol_status')
+        data.get('alcohol_status'),
+        data.get('helmet_id', 'UNKNOWN')
     )
     
     return execute_query(query, params, commit=True)
 
 
-def get_recent_gps_logs(limit=100, date_filter=None):
+def get_recent_gps_logs(limit=100, date_filter=None, helmet_id=None):
     """
-    Get recent GPS logs from the database with optional date filtering.
-    
-    Args:
-        limit (int): Maximum number of logs to retrieve
-        date_filter (str): Optional date string to filter by (format: YYYY-MM-DD)
-    
-    Returns:
-        list: List of GPS log dictionaries
+    Get recent GPS logs with optional date and helmet filtering.
     """
+    conditions = []
+    params = []
+
     if date_filter:
-        query = '''
-            SELECT * FROM gps_logs 
-            WHERE DATE(timestamp) = DATE(?)
-            ORDER BY timestamp DESC 
-            LIMIT ?
-        '''
-        return execute_query(query, (date_filter, limit), fetch_all=True)
-    else:
-        query = '''
-            SELECT * FROM gps_logs 
-            ORDER BY timestamp DESC 
-            LIMIT ?
-        '''
-        return execute_query(query, (limit,), fetch_all=True)
+        conditions.append("DATE(timestamp) = DATE(?)")
+        params.append(date_filter)
+    if helmet_id:
+        conditions.append("helmet_id = ?")
+        params.append(helmet_id)
+
+    where = ("WHERE " + " AND ".join(conditions)) if conditions else ""
+    query = f"SELECT * FROM gps_logs {where} ORDER BY timestamp DESC LIMIT ?"
+    params.append(limit)
+    return execute_query(query, tuple(params), fetch_all=True)
 
 
 def create_user_session(user_id, remember_me=False):
@@ -888,6 +896,48 @@ def send_password_reset_email(user_email, username, reset_link):
 
 
 # ============================================
+# HELMET MANAGEMENT FUNCTIONS
+# ============================================
+
+def register_or_update_helmet(helmet_id, name=None):
+    """Register a new helmet or update its last_seen timestamp."""
+    existing = execute_query(
+        'SELECT * FROM helmets WHERE helmet_id = ?', (helmet_id,), fetch_one=True
+    )
+    if existing:
+        execute_query(
+            'UPDATE helmets SET last_seen = CURRENT_TIMESTAMP WHERE helmet_id = ?',
+            (helmet_id,), commit=True
+        )
+    else:
+        display_name = name or f"Helmet {helmet_id}"
+        execute_query(
+            'INSERT INTO helmets (helmet_id, name, last_seen) VALUES (?, ?, CURRENT_TIMESTAMP)',
+            (helmet_id, display_name), commit=True
+        )
+
+def get_all_helmets():
+    """Get all registered helmets."""
+    return execute_query(
+        'SELECT * FROM helmets ORDER BY last_seen DESC',
+        fetch_all=True
+    )
+
+def get_helmet_by_id(helmet_id):
+    """Get a single helmet record."""
+    return execute_query(
+        'SELECT * FROM helmets WHERE helmet_id = ?', (helmet_id,), fetch_one=True
+    )
+
+def update_helmet_name(helmet_id, name):
+    """Update a helmet's display name."""
+    execute_query(
+        'UPDATE helmets SET name = ? WHERE helmet_id = ?',
+        (name, helmet_id), commit=True
+    )
+
+
+# ============================================
 # AUTHENTICATION DECORATOR
 # ============================================
 
@@ -948,8 +998,8 @@ def reset_password_page(token):
 @app.route("/dashboard")
 @login_required
 def dashboard():
-    """Serve dashboard HTML (protected route)"""
-    return render_template("dashboard.html")
+    """Redirect old /dashboard to fleet overview."""
+    return redirect(url_for("fleet_page"))
 
 
 @app.route("/settings")
@@ -1181,62 +1231,83 @@ def api_reset_password():
 def receive_gps():
     """
     API for ESP32 to POST GPS data.
-    This endpoint doesn't require authentication for IoT devices.
+    Supports multi-helmet via helmet_id field.
+    No authentication required for IoT devices.
     """
     global latest_data
     data = request.json
-    
-    latest_data = {
-        "lat": data.get("lat"),
-        "lng": data.get("lng"),
-        "speed": data.get("speed"),
-        "sat": data.get("sat"),
-        "alt": data.get("alt"),
-        "hour": data.get("hour"),
-        "minute": data.get("minute"),
-        "second": data.get("second"),
-        "day": data.get("day"),
-        "month": data.get("month"),
-        "year": data.get("year"),
-        "alcohol_raw": data.get("alcohol_raw"),
-        "alcohol_status": data.get("alcohol_status")
+
+    helmet_id = data.get("helmet_id", "HELMET_001").strip().upper()
+
+    gps_entry = {
+        "helmet_id":    helmet_id,
+        "lat":          data.get("lat"),
+        "lng":          data.get("lng"),
+        "speed":        data.get("speed"),
+        "sat":          data.get("sat"),
+        "alt":          data.get("alt"),
+        "hour":         data.get("hour"),
+        "minute":       data.get("minute"),
+        "second":       data.get("second"),
+        "day":          data.get("day"),
+        "month":        data.get("month"),
+        "year":         data.get("year"),
+        "alcohol_raw":  data.get("alcohol_raw"),
+        "alcohol_status": data.get("alcohol_status"),
+        "last_seen":    datetime.now().isoformat()
     }
-    
+
+    # Store in memory per helmet
+    latest_data[helmet_id] = gps_entry
+
+    # Auto-register helmet if new, update last_seen if known
+    register_or_update_helmet(helmet_id)
+
     # Log to database
-    log_gps_data(latest_data)
-    
-    print("Received GPS:", latest_data)
-    return jsonify({"status": "ok"}), 200
+    log_gps_data(gps_entry)
+
+    print(f"Received GPS from {helmet_id}:", gps_entry)
+    return jsonify({"status": "ok", "helmet_id": helmet_id}), 200
 
 
 @app.route("/api/gps", methods=["GET"])
 @login_required
 def get_gps():
     """
-    API for dashboard to GET latest GPS data.
-    Protected route - requires login.
+    Get latest GPS data for a specific helmet.
+    Query param: helmet_id
     """
-    return jsonify(latest_data), 200
+    helmet_id = request.args.get("helmet_id", "").strip().upper()
+    if helmet_id and helmet_id in latest_data:
+        return jsonify(latest_data[helmet_id]), 200
+    elif helmet_id:
+        # Helmet registered but no live data yet
+        return jsonify(get_empty_gps() | {"helmet_id": helmet_id}), 200
+    else:
+        # No helmet_id — return all latest data
+        return jsonify(latest_data), 200
 
 
 @app.route("/api/gps/history", methods=["GET"])
 @login_required
 def get_gps_history():
     """
-    Get GPS history logs with optional date filter.
-    Query parameters: 
+    Get GPS history logs with optional date and helmet filters.
+    Query parameters:
         - limit (default 100)
-        - date (optional, format: YYYY-MM-DD)
+        - date (optional, YYYY-MM-DD)
+        - helmet_id (optional)
     """
-    limit = request.args.get('limit', 100, type=int)
-    date_filter = request.args.get('date', None)
-    
-    logs = get_recent_gps_logs(limit, date_filter)
-    
+    limit       = request.args.get("limit", 100, type=int)
+    date_filter = request.args.get("date", None)
+    helmet_id   = request.args.get("helmet_id", None)
+
+    logs = get_recent_gps_logs(limit, date_filter, helmet_id)
+
     return jsonify({
         "success": True,
-        "count": len(logs),
-        "logs": logs
+        "count":   len(logs),
+        "logs":    logs
     }), 200
 
 
@@ -1244,20 +1315,20 @@ def get_gps_history():
 @login_required
 def clear_gps_history():
     """
-    Clear all GPS history logs.
-    Protected route - requires login.
+    Clear GPS history. Optionally for a specific helmet only.
+    Query param: helmet_id (optional)
     """
     try:
-        clear_all_gps_logs()
-        return jsonify({
-            "success": True,
-            "message": "All GPS history cleared successfully"
-        }), 200
+        helmet_id = request.args.get("helmet_id", None)
+        if helmet_id:
+            execute_query("DELETE FROM gps_logs WHERE helmet_id = ?", (helmet_id,), commit=True)
+            msg = f"History for {helmet_id} cleared successfully"
+        else:
+            clear_all_gps_logs()
+            msg = "All GPS history cleared successfully"
+        return jsonify({"success": True, "message": msg}), 200
     except Exception as e:
-        return jsonify({
-            "success": False,
-            "message": str(e)
-        }), 500
+        return jsonify({"success": False, "message": str(e)}), 500
 
 
 @app.route("/api/gps/statistics", methods=["GET"])
@@ -1286,11 +1357,12 @@ def get_user_info():
     
     if user:
         return jsonify({
-            "success": True,
-            "id": user['id'],
-            "username": user['username'],
-            "email": user['email'],
-            "last_login": user['last_login']
+            "success":   True,
+            "id":        user["id"],
+            "username":  user["username"],
+            "email":     user["email"],
+            "last_login": user["last_login"],
+            "is_admin":  user["username"] == "admin"
         }), 200
     else:
         return jsonify({
@@ -1394,6 +1466,72 @@ def test_email_settings():
             "success": False,
             "message": f"Email test failed: {str(e)}"
         }), 400
+
+
+# ============================================
+# HELMET FLEET API ENDPOINTS
+# ============================================
+
+@app.route("/api/helmets", methods=["GET"])
+@login_required
+def get_helmets():
+    """Return all registered helmets with their latest live data."""
+    helmets = get_all_helmets()
+    result = []
+    for h in helmets:
+        hid = h["helmet_id"]
+        live = latest_data.get(hid, {})
+        # Determine online status: last seen within 30 seconds
+        is_online = False
+        last_seen_str = h.get("last_seen")
+        if last_seen_str:
+            try:
+                last_seen_dt = datetime.fromisoformat(str(last_seen_str))
+                is_online = (datetime.now() - last_seen_dt).total_seconds() < 30
+            except:
+                pass
+        result.append({
+            "helmet_id":      hid,
+            "name":           h.get("name") or hid,
+            "registered_at":  h.get("registered_at"),
+            "last_seen":      last_seen_str,
+            "is_online":      is_online,
+            "is_active":      h.get("is_active", 1),
+            "speed":          live.get("speed"),
+            "alcohol_status": live.get("alcohol_status"),
+            "lat":            live.get("lat"),
+            "lng":            live.get("lng"),
+            "sat":            live.get("sat"),
+        })
+    return jsonify({"success": True, "helmets": result}), 200
+
+
+@app.route("/api/helmets/<helmet_id>/rename", methods=["POST"])
+@login_required
+def rename_helmet(helmet_id):
+    """Rename a helmet."""
+    data = request.json
+    name = data.get("name", "").strip()
+    if not name:
+        return jsonify({"success": False, "message": "Name is required"}), 400
+    update_helmet_name(helmet_id, name)
+    return jsonify({"success": True, "message": f"Helmet renamed to {name}"}), 200
+
+
+@app.route("/fleet")
+@login_required
+def fleet_page():
+    """Fleet overview page — all helmets."""
+    return render_template("fleet.html")
+
+
+@app.route("/dashboard/<helmet_id>")
+@login_required
+def helmet_dashboard(helmet_id):
+    """Per-helmet dashboard."""
+    helmet = get_helmet_by_id(helmet_id)
+    name = helmet["name"] if helmet else helmet_id
+    return render_template("dashboard.html", helmet_id=helmet_id, helmet_name=name)
 
 
 # ============================================
